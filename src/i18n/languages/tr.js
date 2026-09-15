@@ -84,6 +84,7 @@ export default {
     departure: 'Çıkış Saati',
     hoursHint: 'Restoran 08:00 ile 12:00 arasında açıktır',
     timeError: 'Geçersiz saat — 08:00 ile 12:00 arasında olmalı ve varış saati çıkış saatinden önce olmalı',
+    conflict: 'Bu yer aynı tarih ve saat için rezerve edilmiş — lütfen farklı bir saat seçin',
     guests: 'Misafir Sayısı',
     notes: 'Özel İstekler',
     submit: 'Rezervasyonu Onayla',

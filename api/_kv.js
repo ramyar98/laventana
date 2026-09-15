@@ -8,7 +8,7 @@ const UPSTASH_TOKEN = process.env.KV_REST_API_TOKEN;
 const useGlobalConfig = Boolean(GLOBAL_CONFIG && VERCEL_TOKEN);
 const useUpstash = Boolean(UPSTASH_URL && UPSTASH_TOKEN);
 
-let memoryLocked = null;
+let memory = {};
 let lastWriteOk = false;
 let lastError = '';
 
@@ -32,24 +32,24 @@ function parseGcConnection(cs) {
   }
 }
 
-async function gcRead() {
+async function gcReadValue(key) {
   const p = parseGcConnection(GLOBAL_CONFIG);
   if (!p || !p.storeId || !p.readToken) return null;
   const res = await fetch(`https://global-config.vercel.com/${p.storeId}/items?token=${encodeURIComponent(p.readToken)}`);
   if (!res.ok) return null;
   const data = await res.json();
   if (Array.isArray(data)) {
-    const item = data.find((it) => it?.key === KEY);
-    return item ? item.value : [];
+    const item = data.find((it) => it?.key === key);
+    return item ? item.value : undefined;
   }
   if (data && Array.isArray(data.items)) {
-    const item = data.items.find((it) => it?.key === KEY);
-    return item ? item.value : [];
+    const item = data.items.find((it) => it?.key === key);
+    return item ? item.value : undefined;
   }
-  return data && data[KEY] !== undefined ? data[KEY] : [];
+  return data && data[key] !== undefined ? data[key] : undefined;
 }
 
-async function gcWrite(tables) {
+async function gcWriteValue(key, value) {
   const p = parseGcConnection(GLOBAL_CONFIG);
   if (!p || !p.storeId || !VERCEL_TOKEN) {
     lastError = 'missing gc connection string or token';
@@ -60,7 +60,7 @@ async function gcWrite(tables) {
     const res = await fetch(`https://api.vercel.com/v1/global-config/${p.storeId}/items?slug=${encodeURIComponent(slug)}`, {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items: [{ operation, key: KEY, value: tables }] }),
+      body: JSON.stringify({ items: [{ operation, key, value }] }),
     });
     if (res.ok) {
       lastError = '';
@@ -82,80 +82,102 @@ async function gcWrite(tables) {
   }
 }
 
-function upstashHeaders() {
-  return { Authorization: `Bearer ${UPSTASH_TOKEN}` };
-}
-
-async function upstashRead() {
-  const res = await fetch(`${UPSTASH_URL}/get/${KEY}`, { headers: upstashHeaders() });
+async function upstashReadValue(key) {
+  const res = await fetch(`${UPSTASH_URL}/get/${key}`, { headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` } });
   if (!res.ok) return null;
   const json = await res.json();
-  if (json.result === null || json.result === undefined || json.result === '') return [];
+  if (json.result === null || json.result === undefined || json.result === '') return undefined;
   try {
     return JSON.parse(json.result);
   } catch {
-    return [];
+    return undefined;
   }
 }
 
-async function upstashWrite(tables) {
-  await fetch(`${UPSTASH_URL}/set/${KEY}`, {
+async function upstashWriteValue(key, value) {
+  await fetch(`${UPSTASH_URL}/set/${key}`, {
     method: 'POST',
-    headers: { ...upstashHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify(tables),
+    headers: { Authorization: `Bearer ${UPSTASH_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(value),
   });
 }
 
-export const lockStore = {
-  async get() {
-    if (useGlobalConfig) {
-      try {
-        return cleanTables(await gcRead());
-      } catch {
-        /* fallthrough */
-      }
+async function readValue(key) {
+  if (useGlobalConfig) {
+    try {
+      const v = await gcReadValue(key);
+      if (v !== undefined && v !== null) return v;
+    } catch {
+      /* fallthrough */
     }
-    if (useUpstash) {
-      try {
-        return cleanTables(await upstashRead());
-      } catch {
-        return cleanTables(memoryLocked);
-      }
+  }
+  if (useUpstash) {
+    try {
+      const v = await upstashReadValue(key);
+      if (v !== undefined && v !== null) return v;
+    } catch {
+      /* fallthrough */
     }
-    return cleanTables(memoryLocked);
-  },
+  }
+  return memory[key] ?? null;
+}
 
-  async set(tables) {
-    const list = cleanTables(tables);
-    memoryLocked = list;
-    if (useGlobalConfig) {
-      const ok = await gcWrite(list);
-      lastWriteOk = ok;
-      if (!ok && useUpstash) {
-        try {
-          await upstashWrite(list);
-          lastWriteOk = true;
-        } catch {
-          /* keep in-memory copy as fallback */
-        }
-      }
-      return list;
-    }
-    if (useUpstash) {
+async function writeValue(key, value) {
+  memory[key] = value;
+  if (useGlobalConfig) {
+    let ok = await gcWriteValue(key, value);
+    lastWriteOk = ok;
+    if (!ok && useUpstash) {
       try {
-        await upstashWrite(list);
+        await upstashWriteValue(key, value);
         lastWriteOk = true;
       } catch {
         lastWriteOk = false;
       }
     }
+    return ok;
+  }
+  if (useUpstash) {
+    try {
+      await upstashWriteValue(key, value);
+      lastWriteOk = true;
+    } catch {
+      lastWriteOk = false;
+    }
+    return lastWriteOk;
+  }
+  lastWriteOk = true;
+  return true;
+}
+
+export const lockStore = {
+  async get() {
+    return cleanTables((await readValue(KEY)) ?? []);
+  },
+  async set(tables) {
+    const list = cleanTables(tables);
+    await writeValue(KEY, list);
     return list;
   },
-
   get lastWriteOk() {
     return lastWriteOk;
   },
+  get lastError() {
+    return lastError;
+  },
+};
 
+export const recordStore = {
+  async get(key, fallback = null) {
+    const v = await readValue(key);
+    return v ?? fallback;
+  },
+  async set(key, value) {
+    return writeValue(key, value);
+  },
+  get lastWriteOk() {
+    return lastWriteOk;
+  },
   get lastError() {
     return lastError;
   },

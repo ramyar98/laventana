@@ -3,6 +3,7 @@ import { useLanguage } from '../context/hooks';
 import { getLockedTables, saveBooking } from '../utils/storage';
 import { sendTelegramMessage, buildWhatsAppUrl } from '../utils/telegram';
 import { translateToEnglish } from '../utils/translate';
+import { submitBooking } from '../utils/api';
 import { ArrowLeft, CheckCircle } from 'lucide-react';
 
 function localToday() {
@@ -50,11 +51,18 @@ export default function BookingForm({ type, tableNumber, onBack }) {
     }
     setSending(true);
     const booking = { ...form, type, tableNumber: tableNumber || null, lang: lang.code };
-    const waLink = buildWhatsAppUrl(booking);
+    const serverRes = await submitBooking(booking);
+    if (serverRes && serverRes.error === 'conflict') {
+      setSending(false);
+      setLockedError(lang.booking.conflict);
+      return;
+    }
+    const finalBooking = serverRes && serverRes.booking ? { ...booking, id: serverRes.booking.id, status: serverRes.booking.status } : booking;
+    const waLink = buildWhatsAppUrl(finalBooking);
     setWaUrl(waLink);
     window.open(waLink, '_blank', 'noopener');
     const notesEn = form.notes ? await translateToEnglish(form.notes, lang.code) : '';
-    const saved = saveBooking({ ...booking, notesEn });
+    const saved = saveBooking({ ...finalBooking, notesEn });
     await sendTelegramMessage(saved);
     setSending(false);
     setSubmitted(true);

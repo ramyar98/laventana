@@ -84,6 +84,7 @@ export default {
     departure: 'Departure Time',
     hoursHint: 'Restaurant open from 8:00 AM to 12:00 AM',
     timeError: 'Invalid time — must be between 8:00 AM and midnight, and arrival must be before departure',
+    conflict: 'This spot is already booked for this date and time — please choose a different time',
     guests: 'Number of Guests',
     notes: 'Special Requests',
     submit: 'Confirm Reservation',

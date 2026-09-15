@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useLanguage } from '../context/hooks';
 import { getBookings, updateBookingStatus, deleteBooking, getLockedTables, setLockedTables, toggleLockedTable } from '../utils/storage';
+import { fetchBookings as fetchBookingsServer, updateBookingStatus as updateBookingStatusServer, deleteBooking as deleteBookingServer } from '../utils/api';
 import { pushServerLocks } from '../utils/lockSync';
 import { sendStatusToTelegram } from '../utils/telegram';
 import { ADMIN_PASSCODE, TOTAL_TABLES, SKIP_TABLE } from '../config';
@@ -15,11 +16,11 @@ export default function Admin() {
   const [filter, setFilter] = useState('all');
   const [view, setView] = useState('bookings');
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     if (passcode === ADMIN_PASSCODE) {
       setAuthenticated(true);
-      setBookings(getBookings());
+      await refresh();
       setError('');
     } else {
       setError(lang.admin.passcodeError);
@@ -27,11 +28,18 @@ export default function Admin() {
     }
   };
 
-  const refresh = () => setBookings(getBookings());
+  const refresh = async () => {
+    const server = await fetchBookingsServer();
+    if (server) {
+      setBookings(server);
+    } else {
+      setBookings(getBookings());
+    }
+  };
 
   useEffect(() => {
     if (!authenticated) return;
-    const sync = () => setBookings(getBookings());
+    const sync = async () => refresh();
     window.addEventListener('storage', sync);
     window.addEventListener('focus', sync);
     document.addEventListener('visibilitychange', sync);
@@ -42,19 +50,21 @@ export default function Admin() {
     };
   }, [authenticated]);
 
-  const handleAccept = (id) => {
+  const handleAccept = async (id) => {
     const booking = bookings.find((b) => b.id === id);
     updateBookingStatus(id, 'confirmed');
+    await updateBookingStatusServer(id, 'confirmed');
     refresh();
-    if (booking) sendStatusToTelegram(booking, 'confirmed');
+    if (booking) sendStatusToTelegram({ ...booking, status: 'confirmed' }, 'confirmed');
   };
-  const handleReject = (id) => {
+  const handleReject = async (id) => {
     const booking = bookings.find((b) => b.id === id);
     updateBookingStatus(id, 'rejected');
+    await updateBookingStatusServer(id, 'rejected');
     refresh();
-    if (booking) sendStatusToTelegram(booking, 'rejected');
+    if (booking) sendStatusToTelegram({ ...booking, status: 'rejected' }, 'rejected');
   };
-  const handleDelete = (id) => { deleteBooking(id); refresh(); };
+  const handleDelete = async (id) => { deleteBooking(id); await deleteBookingServer(id); refresh(); };
 
   const filtered = useMemo(() => {
     if (filter === 'all') return bookings;
