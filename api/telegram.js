@@ -61,10 +61,14 @@ async function handleCommand(text, chatId) {
       locked.add(cmd.table);
     }
     await lockStore.set([...locked]);
-    reply = cmd.kind === 'open'
-      ? `🔓 *مێز #${cmd.table} کرایەوە / Table #${cmd.table} is now OPEN*`
-      : `🔒 *مێز #${cmd.table} داخرا / Table #${cmd.table} is now LOCKED*`;
     writeInfo = { kind: backendKind(), ok: lockStore.lastWriteOk, error: lockStore.lastError };
+    if (writeInfo.ok) {
+      reply = cmd.kind === 'open'
+        ? `🔓 *مێز #${cmd.table} کرایەوە / Table #${cmd.table} is now OPEN*`
+        : `🔒 *مێز #${cmd.table} داخرا / Table #${cmd.table} is now LOCKED*`;
+    } else {
+      reply = `⚠️ *نەکرا / Failed* — مێز #${cmd.table} نەتوانرا دابخرێت/بکرێتەوە (storage error).`;
+    }
   } else if (cmd.kind === 'status') {
     if (!validTable(cmd.table)) return null;
     reply = tables.includes(cmd.table)
