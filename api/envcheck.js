@@ -20,6 +20,8 @@ export default async function handler(req, res) {
       KV_REST_API_URL: has('KV_REST_API_URL'),
       KV_REST_API_TOKEN: has('KV_REST_API_TOKEN'),
       TELEGRAM_WEBHOOK_SECRET: has('TELEGRAM_WEBHOOK_SECRET'),
+      GLOBAL_CONFIG: has('GLOBAL_CONFIG'),
+      VERCEL_API_TOKEN: has('VERCEL_API_TOKEN'),
     },
   });
 }
