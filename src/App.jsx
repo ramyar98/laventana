@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { LanguageProvider, ThemeProvider } from './context/LanguageContext';
 import { ADMIN_ONLY } from './config';
 import { startLockSync, stopLockSync, serverReachable, subscribeServer } from './utils/lockSync';
@@ -104,6 +105,7 @@ export default function App() {
     <LanguageProvider>
       <ThemeProvider>
         <AppContent />
+        <Analytics />
       </ThemeProvider>
     </LanguageProvider>
   );
