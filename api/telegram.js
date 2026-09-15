@@ -23,8 +23,11 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, handled: false });
   }
 
-  const reply = await handleCommand(text.trim(), chatId);
-  return res.status(200).json({ ok: true, handled: Boolean(reply), reply });
+  const result = await handleCommand(text.trim(), chatId);
+  if (!result) {
+    return res.status(200).json({ ok: true, handled: false, reply: null });
+  }
+  return res.status(200).json({ ok: true, handled: true, reply: result.reply, ...result.send });
 }
 
 function parseCommand(text) {
@@ -78,21 +81,22 @@ async function handleCommand(text, chatId) {
     reply = lines.join('\n');
   }
 
-  if (reply) {
-    await sendMessage(chatId, reply);
-  }
-  return reply;
+  if (!reply) return null;
+  const send = await sendMessage(chatId, reply);
+  return { reply, send };
 }
 
 async function sendMessage(chatId, text) {
-  if (!BOT_TOKEN) return;
+  if (!BOT_TOKEN) return { sent: false, reason: 'no_token' };
   try {
-    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+    const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'Markdown' }),
     });
-  } catch {
-    /* ignore send errors below webhook */
+    const data = await res.json().catch(() => null);
+    return data && data.ok ? { sent: true } : { sent: false, reason: data?.description || `http_${res.status}` };
+  } catch (err) {
+    return { sent: false, reason: err.message };
   }
 }
