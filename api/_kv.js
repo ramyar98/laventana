@@ -55,19 +55,27 @@ async function gcWrite(tables) {
     lastError = 'missing gc connection string or token';
     return false;
   }
-  try {
-    const slug = process.env.VERCEL_TEAM_SLUG || 'laventana';
+  const slug = process.env.VERCEL_TEAM_SLUG || 'laventana';
+  const patchItem = async (operation) => {
     const res = await fetch(`https://api.vercel.com/v1/global-config/${p.storeId}/items?slug=${encodeURIComponent(slug)}`, {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items: [{ operation: 'upsert', key: KEY, value: tables }] }),
+      body: JSON.stringify({ items: [{ operation, key: KEY, value: tables }] }),
     });
-    if (!res.ok) {
-      lastError = `http_${res.status} ${(await res.text().catch(() => '')).slice(0, 160)}`;
-      return false;
+    if (res.ok) {
+      lastError = '';
+      return true;
     }
-    lastError = '';
-    return true;
+    const body = await res.text().catch(() => '');
+    lastError = `http_${res.status} ${body.slice(0, 160)}`;
+    return false;
+  };
+
+  try {
+    let ok = await patchItem('upsert');
+    if (!ok && lastError.startsWith('http_404')) ok = await patchItem('create');
+    if (!ok && lastError.startsWith('http_409')) ok = await patchItem('update');
+    return ok;
   } catch (err) {
     lastError = err.message;
     return false;
