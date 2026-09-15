@@ -1,7 +1,6 @@
 import { lockStore } from './_kv.js';
 
 const BOT_TOKEN = process.env.VITE_TELEGRAM_BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN || '';
-const SECRET = process.env.TELEGRAM_WEBHOOK_SECRET || '';
 const MIN_TABLE = 1;
 const MAX_TABLE = 33;
 const SKIP_TABLE = 13;
@@ -9,9 +8,6 @@ const SKIP_TABLE = 13;
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ ok: false, error: 'method_not_allowed' });
-  }
-  if (SECRET && req.headers['x-telegram-bot-api-secret-token'] !== SECRET) {
-    return res.status(403).json({ ok: false, error: 'forbidden' });
   }
 
   const body = req.body || {};
