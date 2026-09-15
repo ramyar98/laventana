@@ -65,8 +65,9 @@ function formatBookingMessage(b) {
     `👤 *Name:* ${b.name}`,
     `📞 *Phone:* ${b.phone}`,
     `📅 *Date:* ${b.date}`,
-    `🕐 *Arrival:* ${formatTime(b.arrival)}`,
-    `🏁 *Departure:* ${formatTime(b.departure)}`,
+    ...(b.arrival
+      ? [`🕐 *Arrival:* ${formatTime(b.arrival)}`, `🏁 *Departure:* ${formatTime(b.departure)}`]
+      : [`🕐 *Time:* ${formatTime(b.time)}`]),
     `👥 *Guests:* ${b.guests}`,
   ];
   if (b.notes) lines.push(`📝 *Notes:* ${b.notes}`);
@@ -96,8 +97,9 @@ export function buildWhatsAppUrl(b) {
     `👤 Name: ${b.name}`,
     `📞 Phone: ${b.phone}`,
     `📅 Date: ${b.date}`,
-    `🕐 Arrival: ${formatTime(b.arrival)}`,
-    `🏁 Departure: ${formatTime(b.departure)}`,
+    ...(b.arrival
+      ? [`🕐 Arrival: ${formatTime(b.arrival)}`, `🏁 Departure: ${formatTime(b.departure)}`]
+      : [`🕐 Time: ${formatTime(b.time)}`]),
     `👥 Guests: ${b.guests}`,
   ];
   if (b.notes) lines.push(`📝 Notes: ${b.notes}`);

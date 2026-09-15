@@ -31,7 +31,7 @@ export default function BookingForm({ type, tableNumber, onBack }) {
   const [timeError, setTimeError] = useState('');
   const [waUrl, setWaUrl] = useState('');
   const [form, setForm] = useState({
-    name: '', phone: '', date: localToday(), arrival: '', departure: '', guests: '2', notes: '',
+    name: '', phone: '', date: localToday(), time: '', arrival: '', departure: '', guests: '2', notes: '',
   });
 
   const handleChange = (e) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -44,7 +44,7 @@ export default function BookingForm({ type, tableNumber, onBack }) {
     }
     setLockedError('');
     setTimeError('');
-    if (!validTime(form.arrival) || !validTime(form.departure) || timeToMin(form.arrival) >= timeToMin(form.departure)) {
+    if (type === 'vip' && (!validTime(form.arrival) || !validTime(form.departure) || timeToMin(form.arrival) >= timeToMin(form.departure))) {
       setTimeError(lang.booking.timeError);
       return;
     }
@@ -127,8 +127,14 @@ export default function BookingForm({ type, tableNumber, onBack }) {
         <Input label={lang.booking.name} name="name" value={form.name} onChange={handleChange} required />
         <Input label={lang.booking.phone} name="phone" type="tel" inputMode="tel" placeholder="07501234567" value={form.phone} onChange={handleChange} required hint={lang.booking.phoneHint} />
         <Input label={lang.booking.date} name="date" type="date" value={form.date} onChange={handleChange} required min={localToday()} hint={lang.booking.dateAuto} />
-        <Input label={lang.booking.arrival} name="arrival" type="time" value={form.arrival} onChange={handleChange} required hint={lang.booking.hoursHint} />
-        <Input label={lang.booking.departure} name="departure" type="time" value={form.departure} onChange={handleChange} required />
+        {type === 'vip' ? (
+          <>
+            <Input label={lang.booking.arrival} name="arrival" type="time" value={form.arrival} onChange={handleChange} required hint={lang.booking.hoursHint} />
+            <Input label={lang.booking.departure} name="departure" type="time" value={form.departure} onChange={handleChange} required />
+          </>
+        ) : (
+          <Input label={lang.booking.time} name="time" type="time" value={form.time} onChange={handleChange} required />
+        )}
         <Input label={lang.booking.guests} name="guests" type="number" value={form.guests} onChange={handleChange} required min="1" max="1000" />
 
         <div>
