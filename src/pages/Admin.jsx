@@ -201,7 +201,11 @@ export default function Admin() {
                       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs sm:text-sm dark:text-gray-400 text-gray-500">
                         <span dir="ltr">📞 {b.phone}</span>
                         <span>📅 {b.date}</span>
-                        <span>🕐 {b.time}</span>
+                        {b.arrival ? (
+                          <span>🕐 {b.arrival} ← {b.departure}</span>
+                        ) : (
+                          <span>🕐 {b.time}</span>
+                        )}
                         <span>👥 {b.guests}</span>
                       </div>
                       {b.notes && (

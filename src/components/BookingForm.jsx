@@ -5,14 +5,33 @@ import { sendTelegramMessage, buildWhatsAppUrl } from '../utils/telegram';
 import { translateToEnglish } from '../utils/translate';
 import { ArrowLeft, CheckCircle } from 'lucide-react';
 
+function localToday() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function validTime(t) {
+  if (!t) return false;
+  const [hh, mm] = t.split(':').map(Number);
+  if (!Number.isInteger(hh) || !Number.isInteger(mm)) return false;
+  if (hh === 0 && mm === 0) return true;
+  return hh >= 8;
+}
+
+function timeToMin(t) {
+  const [hh, mm] = t.split(':').map(Number);
+  return hh === 0 ? 1440 : hh * 60 + mm;
+}
+
 export default function BookingForm({ type, tableNumber, onBack }) {
   const { lang } = useLanguage();
   const [submitted, setSubmitted] = useState(false);
   const [sending, setSending] = useState(false);
   const [lockedError, setLockedError] = useState('');
+  const [timeError, setTimeError] = useState('');
   const [waUrl, setWaUrl] = useState('');
   const [form, setForm] = useState({
-    name: '', phone: '', date: '', time: '', guests: '2', notes: '',
+    name: '', phone: '', date: localToday(), arrival: '', departure: '', guests: '2', notes: '',
   });
 
   const handleChange = (e) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -24,6 +43,11 @@ export default function BookingForm({ type, tableNumber, onBack }) {
       return;
     }
     setLockedError('');
+    setTimeError('');
+    if (!validTime(form.arrival) || !validTime(form.departure) || timeToMin(form.arrival) >= timeToMin(form.departure)) {
+      setTimeError(lang.booking.timeError);
+      return;
+    }
     setSending(true);
     const booking = { ...form, type, tableNumber: tableNumber || null, lang: lang.code };
     const waLink = buildWhatsAppUrl(booking);
@@ -67,8 +91,6 @@ export default function BookingForm({ type, tableNumber, onBack }) {
     );
   }
 
-  const today = new Date().toISOString().split('T')[0];
-
   return (
     <div className="min-h-screen px-4 py-8 sm:py-12 max-w-lg mx-auto">
       <button
@@ -95,11 +117,18 @@ export default function BookingForm({ type, tableNumber, onBack }) {
         </p>
       )}
 
+      {timeError && (
+        <p className="mb-6 p-3 rounded-xl dark:bg-red-500/10 bg-red-50 dark:text-red-400 text-red-600 text-sm font-medium text-center border dark:border-red-500/20 border-red-200">
+          {timeError}
+        </p>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-5">
         <Input label={lang.booking.name} name="name" value={form.name} onChange={handleChange} required />
         <Input label={lang.booking.phone} name="phone" type="tel" inputMode="tel" placeholder="07501234567" value={form.phone} onChange={handleChange} required hint={lang.booking.phoneHint} />
-        <Input label={lang.booking.date} name="date" type="date" value={form.date} onChange={handleChange} required min={today} />
-        <Input label={lang.booking.time} name="time" type="time" value={form.time} onChange={handleChange} required />
+        <Input label={lang.booking.date} name="date" type="date" value={form.date} onChange={handleChange} required min={localToday()} hint={lang.booking.dateAuto} />
+        <Input label={lang.booking.arrival} name="arrival" type="time" value={form.arrival} onChange={handleChange} required hint={lang.booking.hoursHint} />
+        <Input label={lang.booking.departure} name="departure" type="time" value={form.departure} onChange={handleChange} required />
         <Input label={lang.booking.guests} name="guests" type="number" value={form.guests} onChange={handleChange} required min="1" max="1000" />
 
         <div>
