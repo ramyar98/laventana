@@ -45,7 +45,9 @@ async function gcWrite(tables) {
   const p = parseGcConnection(GLOBAL_CONFIG);
   if (!p || !p.storeId || !VERCEL_TOKEN) return false;
   try {
-    const res = await fetch(`https://api.vercel.com/v1/global-config/${p.storeId}/items`, {
+    const p = parseGcConnection(GLOBAL_CONFIG);
+    const slug = process.env.VERCEL_TEAM_SLUG || 'laventana';
+    const res = await fetch(`https://api.vercel.com/v1/global-config/${p.storeId}/items?slug=${encodeURIComponent(slug)}`, {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ items: [{ operation: 'upsert', key: KEY, value: tables }] }),
