@@ -33,7 +33,7 @@ There is **no button or link** to the admin panel in the app. It is reached only
    - `VITE_TELEGRAM_BOT_TOKEN`, `VITE_TELEGRAM_CHAT_ID`, `VITE_GEMINI_API_KEY`, `VITE_WHATSAPP_PHONE`, `VITE_ADMIN_PASSCODE`
    - `VITE_ADMIN_ONLY=false`
    - `KV_REST_API_URL`, `KV_REST_API_TOKEN` (from a **Vercel KV / Upstash Redis** store — free tier is fine)
-4. Create a **second** Vercel project (e.g. `laventana1`) from the same repo, with the **same** env vars (including `KV_REST_API_URL`, `KV_REST_API_TOKEN` — share the same KV store so both deployments stay in sync) but `VITE_ADMIN_ONLY=true`. This deployment shows only the admin panel at its root URL.
+4. Create a **second** Vercel project from the same repo. Give it the **same** env vars (including `KV_REST_API_URL`, `KV_REST_API_TOKEN` — share the same KV store so both deployments stay in sync). Then in **Project → Settings → Domains** add the alias `laventana1.vercel.app`. That host renders **only the admin panel** (the app forces admin-only UI on the `laventana1.vercel.app` host, so `VITE_ADMIN_ONLY` is optional).
 5. After the main deploy is live, register the Telegram webhook (once):
    ```bash
    node scripts/set-webhook.mjs set https://laventana.vercel.app/api/telegram
