@@ -1,4 +1,4 @@
-import { lockStore } from './_kv.js';
+import { lockStore, backendKind } from './_kv.js';
 
 const BOT_TOKEN = process.env.VITE_TELEGRAM_BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN || '';
 const MIN_TABLE = 1;
@@ -50,6 +50,7 @@ async function handleCommand(text, chatId) {
   const validTable = (t) => t >= MIN_TABLE && t <= MAX_TABLE && t !== SKIP_TABLE;
   const tables = await lockStore.get();
   let reply = null;
+  let writeInfo = null;
 
   if (cmd.kind === 'open' || cmd.kind === 'close') {
     if (!validTable(cmd.table)) return null;
@@ -63,6 +64,7 @@ async function handleCommand(text, chatId) {
     reply = cmd.kind === 'open'
       ? `🔓 *مێز #${cmd.table} کرایەوە / Table #${cmd.table} is now OPEN*`
       : `🔒 *مێز #${cmd.table} داخرا / Table #${cmd.table} is now LOCKED*`;
+    writeInfo = { kind: backendKind(), ok: lockStore.lastWriteOk, error: lockStore.lastError };
   } else if (cmd.kind === 'status') {
     if (!validTable(cmd.table)) return null;
     reply = tables.includes(cmd.table)
@@ -79,7 +81,7 @@ async function handleCommand(text, chatId) {
 
   if (!reply) return null;
   const send = await sendMessage(chatId, reply);
-  return { reply, send };
+  return { reply, send, write: writeInfo };
 }
 
 async function sendMessage(chatId, text) {

@@ -9,9 +9,17 @@ const useGlobalConfig = Boolean(GLOBAL_CONFIG && VERCEL_TOKEN);
 const useUpstash = Boolean(UPSTASH_URL && UPSTASH_TOKEN);
 
 let memoryLocked = null;
+let lastWriteOk = false;
+let lastError = '';
 
 export function cleanTables(tables) {
   return [...new Set((tables || []).map(Number).filter((n) => Number.isInteger(n) && n >= 1 && n <= 33 && n !== 13))].sort((a, b) => a - b);
+}
+
+export function backendKind() {
+  if (useGlobalConfig) return 'global-config';
+  if (useUpstash) return 'upstash';
+  return 'memory';
 }
 
 function parseGcConnection(cs) {
@@ -43,17 +51,25 @@ async function gcRead() {
 
 async function gcWrite(tables) {
   const p = parseGcConnection(GLOBAL_CONFIG);
-  if (!p || !p.storeId || !VERCEL_TOKEN) return false;
+  if (!p || !p.storeId || !VERCEL_TOKEN) {
+    lastError = 'missing gc connection string or token';
+    return false;
+  }
   try {
-    const p = parseGcConnection(GLOBAL_CONFIG);
     const slug = process.env.VERCEL_TEAM_SLUG || 'laventana';
     const res = await fetch(`https://api.vercel.com/v1/global-config/${p.storeId}/items?slug=${encodeURIComponent(slug)}`, {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ items: [{ operation: 'upsert', key: KEY, value: tables }] }),
     });
-    return res.ok;
-  } catch {
+    if (!res.ok) {
+      lastError = `http_${res.status} ${(await res.text().catch(() => '')).slice(0, 160)}`;
+      return false;
+    }
+    lastError = '';
+    return true;
+  } catch (err) {
+    lastError = err.message;
     return false;
   }
 }
@@ -106,9 +122,11 @@ export const lockStore = {
     memoryLocked = list;
     if (useGlobalConfig) {
       const ok = await gcWrite(list);
+      lastWriteOk = ok;
       if (!ok && useUpstash) {
         try {
           await upstashWrite(list);
+          lastWriteOk = true;
         } catch {
           /* keep in-memory copy as fallback */
         }
@@ -118,10 +136,19 @@ export const lockStore = {
     if (useUpstash) {
       try {
         await upstashWrite(list);
+        lastWriteOk = true;
       } catch {
-        /* keep in-memory copy as fallback */
+        lastWriteOk = false;
       }
     }
     return list;
+  },
+
+  get lastWriteOk() {
+    return lastWriteOk;
+  },
+
+  get lastError() {
+    return lastError;
   },
 };
