@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ku" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#030712" />
+    <meta name="description" content="Laventana VIP Lounge & Restaurant - Book your table" />
+    <title>Laventana VIP Lounge & Restaurant</title>
+    <script>
+      (function () {
+        try {
+          var theme = localStorage.getItem('laventana-theme') || 'dark';
+          document.documentElement.classList.add(theme === 'light' ? 'light' : 'dark');
+          var code = localStorage.getItem('laventana-lang') || 'ku';
+          var rtl = ['ar', 'fa', 'ku', 'bad'].indexOf(code) !== -1;
+          document.documentElement.lang = code;
+          document.documentElement.dir = rtl ? 'rtl' : 'ltr';
+        } catch (e) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
